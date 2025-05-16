@@ -1,0 +1,57 @@
+digraph SolutionFlow {
+    rankdir=LR;
+    node [shape=box, style=rounded, fontsize=10, fontname="Arial"];
+
+    subgraph cluster_repo {
+        label="1. Repository";
+        color=lightgray;
+        RepoClone [label="Clone / Update\nC# Repo\n(temp folder)"];
+    }
+
+    subgraph cluster_extractor {
+        label="2. Roslyn Extractor";
+        color=lightblue;
+        EnsureExtractor [label="Ensure extractor tool\n(scaffold & build .NET 8)"];
+        RunExtractor    [label="Run extractor DLL\nper .cs file"];
+        JSONOutput      [label="Get JSON class & method info"];
+    }
+
+    subgraph cluster_generator {
+        label="3. Test Generation";
+        color=lightgreen;
+        BuildPrompt     [label="Build LLM prompt\n(with class info & source)"];
+        CallOllama      [label="Call `ollama run`\nproduce NUnit test class"];
+        ValidateOutput  [label="Validate keywords\n[TestFixture], [Test]"];
+    }
+
+    subgraph cluster_cache {
+        label="4. Caching";
+        color=orange;
+        InitCache       [label="Init SQLite\ncache database"];
+        CheckCache      [label="Check\ncache hit/miss"];
+        WriteCache      [label="Store generated code"];
+    }
+
+    subgraph cluster_writer {
+        label="5. Writing & Running";
+        color=yellow;
+        InitTestProj    [label="Init `dotnet new nunit`\nproject"];
+        WriteFiles      [label="Write test `.cs` files\n(mirror folder structure)"];
+        BuildAndTest    [label="`dotnet build` & `dotnet test`"];
+    }
+
+    // Flow arrows
+    RepoClone       -> EnsureExtractor;
+    EnsureExtractor -> RunExtractor;
+    RunExtractor    -> JSONOutput;
+    JSONOutput      -> BuildPrompt;
+    JSONOutput      -> CheckCache;
+    InitCache       -> CheckCache;
+    CheckCache      -> CallOllama [label="miss"];
+    CheckCache      -> ValidateOutput [label="hit\n(use cached)"];
+    CallOllama      -> ValidateOutput;
+    ValidateOutput  -> WriteCache;
+    ValidateOutput  -> WriteFiles;
+    InitTestProj    -> WriteFiles;
+    WriteFiles      -> BuildAndTest;
+}

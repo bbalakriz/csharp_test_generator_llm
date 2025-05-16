@@ -1,0 +1,5 @@
+/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/GeneratedTests/obj/Release/net8.0/GeneratedTests.csproj.AssemblyReference.cache
+/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/GeneratedTests/obj/Release/net8.0/GeneratedTests.GeneratedMSBuildEditorConfig.editorconfig
+/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/GeneratedTests/obj/Release/net8.0/GeneratedTests.AssemblyInfoInputs.cache
+/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/GeneratedTests/obj/Release/net8.0/GeneratedTests.AssemblyInfo.cs
+/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/GeneratedTests/obj/Release/net8.0/GeneratedTests.csproj.CoreCompileInputs.cache

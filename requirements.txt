@@ -1,0 +1,3 @@
+GitPython 
+pytest
+# ensure `dotnet` (SDK 8) & `ollama` are on your PATH
