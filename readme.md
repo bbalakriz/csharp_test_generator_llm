@@ -1,3 +1,5 @@
+To run the application, just do `python run.py`. Python version used in my machine - 3.13.2. 
+
 # C# NUnit test generator
 
 This project provides a simple Python driven solution to automatically generate NUnit unit tests for C# code. It uses a small .NET 8 Roslyn extractor tool to parse C# source, a local Ollama LLM to write rich test classes, and organizes everything into a clean, production-grade workflow.
