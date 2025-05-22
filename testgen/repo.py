@@ -33,12 +33,15 @@ def get_repo(local_dir: str, repo_url: str, branch: str = "main") -> Repo:
         logger.error(f"Git error: {e}")
         raise
 
-def find_cs_files(path: str, exclude_dirs: Tuple[str, ...] = ("bin", "obj", ".git")) -> Generator[str, None, None]:
-    """
-    yield the all .cs files under `path`, skipping `exclude_dirs`.
-    """
-    for root, dirs, files in os.walk(path):
-        dirs[:] = [d for d in dirs if d not in exclude_dirs and not d.startswith('.')]
-        for f in files:
-            if f.endswith(".cs"):
-                yield os.path.join(root, f)
+def find_cs_files(root_dir: str):
+    cs_files = []
+    for dirpath, dirnames, filenames in os.walk(root_dir):
+        # Exclude any directory named "Tests" (case-insensitive)
+        dirnames[:] = [d for d in dirnames if d.lower() != "tests"]
+
+        for file in filenames:
+            if file.lower().endswith(".cs") and "tests" not in file.lower():
+                full_path = os.path.join(dirpath, file)
+                cs_files.append(full_path)
+
+    return cs_files

@@ -1,4 +1,9 @@
-To run the application, just do `python run.py`. Python version used in my machine - 3.13.2. 
+To run the application, just do `python run.py`. Python version used in my machine - 3.13.2. You’ll need to have:
+
+- The .NET SDK installed (so dotnet is on your PATH).
+
+- dotnet-reportgenerator-globaltool installed globally (dotnet tool install -g dotnet-reportgenerator-globaltool
+)
 
 # C# NUnit test generator
 

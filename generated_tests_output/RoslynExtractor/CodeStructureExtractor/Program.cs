@@ -2,166 +2,231 @@
 // full Roslyn extractor source...
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Collections.Generic;
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-// Data structures for JSON output
 public class ClassInfo
 {
     public string FilePath { get; set; } = "";
+    public string NamespaceName { get; set; } = "";
     public string ClassName { get; set; } = "";
-    public string NamespaceName { get; set; } = ""; // Namespace of the class itself
-    public List<MethodInfo> PublicMethods { get; set; } = new List<MethodInfo>();
-    public string FullSourceCode { get; set; } = ""; // Full content of the .cs file
-    public List<string> UsingDirectivesInFile { get; set; } = new List<string>(); // All 'using' in the file
-    public bool IsStatic { get; set; } = false;
-    public bool IsAbstract { get; set; } = false;
-    public List<ConstructorInfo> Constructors { get; set; } = new List<ConstructorInfo>();
-}
-
-public class MethodInfo
-{
-    public string Name { get; set; } = "";
-    public string ReturnType { get; set; } = "";
-    public List<string> Parameters { get; set; } = new List<string>(); // e.g., "string name", "int count"
-    public string Signature { get; set; } = ""; // e.g., "public string GetName(int id)"
-    public bool IsStatic { get; set; } = false;
-    public bool IsAbstract { get; set; } = false;
-    public bool IsAsync { get; set; } = false;
+    public List<ConstructorInfo> Constructors { get; set; } = new();
+    public List<MethodInfo> Methods { get; set; } = new();
+    public List<PropertyInfo> Properties { get; set; } = new();
+    public List<string> UsingDirectives { get; set; } = new();
+    public Dictionary<string, string> ReferencedTypeDefinitions { get; set; } = new();
 }
 
 public class ConstructorInfo
 {
     public string Signature { get; set; } = "";
-    public List<string> Parameters { get; set; } = new List<string>();
+    public List<string> Parameters { get; set; } = new();
+    public List<ExceptionCondition> ExceptionConditions { get; set; } = new();
 }
 
-public class Extractor
+public class MethodInfo
 {
-    public static void Main(string[] args)
+    public string Name { get; set; } = "";
+    public string Signature { get; set; } = "";
+    public string ReturnType { get; set; } = "";
+    public List<string> Parameters { get; set; } = new();
+    public List<ExceptionCondition> ExceptionConditions { get; set; } = new();
+    public List<string> DependencyTypes { get; set; } = new();
+    public string SourceCode { get; set; } = "";
+}
+
+public class PropertyInfo
+{
+    public string Name { get; set; } = "";
+    public string Type { get; set; } = "";
+}
+
+public class ExceptionCondition
+{
+    public string ConditionExpression { get; set; } = "";
+    public string ExceptionType { get; set; } = "";
+}
+
+class Program
+{
+    static void Main(string[] args)
     {
-        var filePath = args.Length > 0 ? args[0] : Console.In.ReadToEnd().Trim();
-        if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+        if (args.Length < 1)
         {
-            Console.Error.WriteLine($"Error: File not found or path is empty. Path: '{filePath}'");
-            Environment.ExitCode = 1; // Indicate error
+            Console.Error.WriteLine("Usage: extractor <cs-file>");
             return;
         }
 
-        var results = new List<ClassInfo>();
-        try
+        var filePath = args[0];
+        if (!File.Exists(filePath))
         {
-            string code = File.ReadAllText(filePath);
-            SyntaxTree tree = CSharpSyntaxTree.ParseText(code, CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest));
-            CompilationUnitSyntax root = tree.GetCompilationUnitRoot();
+            Console.Error.WriteLine("File not found: " + filePath);
+            return;
+        }
 
-            // Attempt to create a compilation for semantic analysis (helps resolve types more accurately)
-            // This is a minimal compilation, might need more references for complex projects
-            var compilation = CSharpCompilation.Create("ExtractorAssembly")
-                .AddReferences(MetadataReference.CreateFromFile(typeof(object).Assembly.Location)) 
-                .AddSyntaxTrees(tree);
-            SemanticModel semanticModel = compilation.GetSemanticModel(tree);
+        var code = File.ReadAllText(filePath);
+        var tree = CSharpSyntaxTree.ParseText(code, new CSharpParseOptions(LanguageVersion.Latest));
+        var root = tree.GetCompilationUnitRoot();
+        
+        var mscorlib = MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
+        var compilation = CSharpCompilation.Create("ExtractorAssembly")
+            .AddReferences(mscorlib)
+            .AddSyntaxTrees(tree);
+        var semanticModel = compilation.GetSemanticModel(tree);
 
-            var usingDirectivesInFile = root.Usings.Select(u => u.ToString().Trim()).ToList();
+        var result = new List<ClassInfo>();
+        var usings = root.Usings.Select(u => u.ToString().Trim()).ToList();
 
-            foreach (var typeDeclaration in root.DescendantNodes().OfType<TypeDeclarationSyntax>())
+        foreach (var classDecl in root.DescendantNodes().OfType<ClassDeclarationSyntax>())
+        {
+            var classSymbol = semanticModel.GetDeclaredSymbol(classDecl);
+            if (classSymbol == null) continue;
+
+            // Move collectedTypes inside the loop, so it's declared before use:
+            var collectedTypes = new Dictionary<string, string>();
+
+            // Recursive collector now fully implemented:
+            void CollectType(INamedTypeSymbol typeSymbol)
             {
-                // We are interested in classes, structs, and interfaces for potential test generation context
-                // but primarily focus on generating tests for non-abstract classes.
-                if (!(typeDeclaration is ClassDeclarationSyntax || 
-                      typeDeclaration is StructDeclarationSyntax /*|| 
-                      typeDeclaration is InterfaceDeclarationSyntax*/)) // For now, only classes/structs
+                var key = typeSymbol.ToDisplayString();
+                if (collectedTypes.ContainsKey(key)) return;
+
+                var declRef = typeSymbol.DeclaringSyntaxReferences.FirstOrDefault();
+                if (declRef == null) return;
+                var decl = declRef.GetSyntax() as TypeDeclarationSyntax;
+                if (decl == null) return;
+
+                collectedTypes[key] = decl.NormalizeWhitespace().ToFullString();
+
+                // 1) Properties
+                foreach (var prop in decl.Members.OfType<PropertyDeclarationSyntax>())
                 {
-                    continue;
+                    var pt = semanticModel.GetTypeInfo(prop.Type).Type as INamedTypeSymbol;
+                    if (pt != null && pt.Locations.Any(l => l.IsInSource))
+                        CollectType(pt);
                 }
-
-                var declaredSymbol = semanticModel.GetDeclaredSymbol(typeDeclaration);
-                if (declaredSymbol == null) continue;
-
-                string namespaceName = declaredSymbol.ContainingNamespace?.ToDisplayString() ?? "Global";
-                if (declaredSymbol.ContainingNamespace != null && declaredSymbol.ContainingNamespace.IsGlobalNamespace)
+                // 2) Fields
+                foreach (var field in decl.Members.OfType<FieldDeclarationSyntax>())
                 {
-                     namespaceName = "Global"; // Explicitly "Global" for clarity
+                    var ft = semanticModel.GetTypeInfo(field.Declaration.Type).Type as INamedTypeSymbol;
+                    if (ft != null && ft.Locations.Any(l => l.IsInSource))
+                        CollectType(ft);
                 }
-
-
-                var classInfo = new ClassInfo
+                // 3) Constructor parameters
+                foreach (var ctor in decl.Members.OfType<ConstructorDeclarationSyntax>())
                 {
-                    FilePath = Path.GetFullPath(filePath),
-                    ClassName = typeDeclaration.Identifier.Text,
-                    NamespaceName = namespaceName,
-                    FullSourceCode = code,
-                    UsingDirectivesInFile = new List<string>(usingDirectivesInFile),
-                    IsStatic = declaredSymbol.IsStatic,
-                    IsAbstract = declaredSymbol.IsAbstract
+                    foreach (var param in ctor.ParameterList.Parameters)
+                    {
+                        var pt = semanticModel.GetTypeInfo(param.Type).Type as INamedTypeSymbol;
+                        if (pt != null && pt.Locations.Any(l => l.IsInSource))
+                            CollectType(pt);
+                    }
+                }
+                // 4) Base type
+                if (typeSymbol.BaseType != null && typeSymbol.BaseType.Locations.Any(l => l.IsInSource))
+                    CollectType(typeSymbol.BaseType);
+                // 5) Interfaces
+                foreach (var iface in typeSymbol.Interfaces)
+                    if (iface.Locations.Any(l => l.IsInSource))
+                        CollectType(iface);
+            }
+
+            // Build ClassInfo
+            var info = new ClassInfo
+            {
+                FilePath = filePath,
+                NamespaceName = classSymbol.ContainingNamespace?.ToDisplayString() ?? "",
+                ClassName = classDecl.Identifier.Text,
+                UsingDirectives = usings,
+                ReferencedTypeDefinitions = collectedTypes
+            };
+
+            // Constructors
+            foreach (var ctor in classDecl.Members.OfType<ConstructorDeclarationSyntax>())
+            {
+                if (!ctor.Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword))) continue;
+                var ci = new ConstructorInfo
+                {
+                    Signature = ctor.NormalizeWhitespace().ToString().Split('{')[0].Trim(),
+                    Parameters = ctor.ParameterList.Parameters.Select(p => p.ToString()).ToList(),
+                    ExceptionConditions = ctor.DescendantNodes()
+                        .OfType<IfStatementSyntax>()
+                        .SelectMany(ifNode => ifNode.DescendantNodes()
+                            .OfType<ThrowStatementSyntax>()
+                            .Select(ts => new ExceptionCondition
+                            {
+                                ConditionExpression = ifNode.Condition.ToString(),
+                                ExceptionType = (ts.Expression as ObjectCreationExpressionSyntax)?.Type.ToString() ?? "Exception"
+                            }))
+                        .ToList()
+                };
+                info.Constructors.Add(ci);
+            }
+
+            // Methods
+            foreach (var method in classDecl.Members.OfType<MethodDeclarationSyntax>())
+            {
+                // if (!method.Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword))) continue;
+                var sym = semanticModel.GetDeclaredSymbol(method);
+                // capture full method source, including leading comments/trivia
+                var leadingTrivia = method.GetLeadingTrivia().ToFullString();
+                var normalized    = method.NormalizeWhitespace().ToFullString();
+
+                var mi = new MethodInfo
+                {
+                    Name = method.Identifier.Text,
+                    Signature = method.NormalizeWhitespace().ToString().Split('{')[0].Trim(),
+                    ReturnType = sym.ReturnType.ToDisplayString(),
+                    Parameters = method.ParameterList.Parameters.Select(p => p.ToString()).ToList(),
+                    ExceptionConditions = method.DescendantNodes()
+                        .OfType<IfStatementSyntax>()
+                        .SelectMany(ifNode => ifNode.DescendantNodes()
+                            .OfType<ThrowStatementSyntax>()
+                            .Select(ts => new ExceptionCondition
+                            {
+                                ConditionExpression = ifNode.Condition.ToString(),
+                                ExceptionType = (ts.Expression as ObjectCreationExpressionSyntax)?.Type.ToString() ?? "Exception"
+                            }))
+                        .ToList(),
+                    DependencyTypes = new List<string>(),                    
+                    SourceCode = leadingTrivia + normalized
                 };
 
-                // Get Constructors
-                foreach (var ctorNode in typeDeclaration.Members.OfType<ConstructorDeclarationSyntax>())
+                // Detect locals for dependencies
+                var dataFlow = semanticModel.AnalyzeDataFlow(method.Body);
+                foreach (var local in dataFlow.VariablesDeclared.OfType<ILocalSymbol>())
                 {
-                    if (ctorNode.Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword))) // Consider public constructors
+                    if (local.Type is INamedTypeSymbol nt && nt.Locations.Any(l => l.IsInSource))
                     {
-                        var ctorParams = ctorNode.ParameterList.Parameters
-                            .Select(p => $"{p.Type?.ToString() ?? "unknown"} {p.Identifier.ValueText}")
-                            .ToList();
-                        classInfo.Constructors.Add(new ConstructorInfo
-                        {
-                            Parameters = ctorParams,
-                            Signature = $"public {classInfo.ClassName}({string.Join(", ", ctorParams)})"
-                        });
+                        mi.DependencyTypes.Add(nt.ToDisplayString());
+                        CollectType(nt);
                     }
                 }
-
-
-                // Get Public Methods
-                foreach (var methodNode in typeDeclaration.Members.OfType<MethodDeclarationSyntax>())
-                {
-                    if (methodNode.Modifiers.Any(m => m.IsKind(SyntaxKind.PublicKeyword)))
-                    {
-                        var methodSymbol = semanticModel.GetDeclaredSymbol(methodNode);
-                        if (methodSymbol == null) continue;
-
-                        var parameters = methodNode.ParameterList.Parameters
-                            .Select(p => $"{p.Type?.ToString() ?? "unknown_type"} {p.Identifier.ValueText}")
-                            .ToList();
-                        
-                        string returnType = methodSymbol.ReturnType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
-                        string methodName = methodNode.Identifier.ValueText;
-                        
-                        var modifiers = string.Join(" ", methodNode.Modifiers.Select(m => m.Text));
-                        if (!string.IsNullOrWhiteSpace(modifiers)) modifiers += " ";
-
-                        classInfo.PublicMethods.Add(new MethodInfo
-                        {
-                            Name = methodName,
-                            ReturnType = returnType,
-                            Parameters = parameters,
-                            Signature = $"{modifiers}{returnType} {methodName}({string.Join(", ", parameters)})",
-                            IsStatic = methodSymbol.IsStatic,
-                            IsAbstract = methodSymbol.IsAbstract,
-                            IsAsync = methodSymbol.IsAsync
-                        });
-                    }
-                }
-                
-                // Add class if it's not abstract (abstract classes cannot be instantiated directly for testing)
-                // Or if it's static (static classes are tested via their static members)
-                if (!classInfo.IsAbstract || classInfo.IsStatic) 
-                {
-                    results.Add(classInfo);
-                }
+                info.Methods.Add(mi);
             }
-            var jsonOptions = new JsonSerializerOptions { WriteIndented = false, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
-            Console.WriteLine(JsonSerializer.Serialize(results, jsonOptions));
+
+            // Properties
+            foreach (var prop in classDecl.Members.OfType<PropertyDeclarationSyntax>())
+            {
+                var pi = new PropertyInfo
+                {
+                    Name = prop.Identifier.Text,
+                    Type = (semanticModel.GetTypeInfo(prop.Type).Type as INamedTypeSymbol)
+                           ?.ToDisplayString() ?? prop.Type.ToString()
+                };
+                info.Properties.Add(pi);
+                var pt = semanticModel.GetTypeInfo(prop.Type).Type as INamedTypeSymbol;
+                if (pt != null && pt.Locations.Any(l => l.IsInSource))
+                    CollectType(pt);
+            }
+
+            result.Add(info);
         }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Error processing file {filePath}: {ex.ToString()}");
-            Environment.ExitCode = 2; // Indicate processing error
-        }
+
+        Console.WriteLine(JsonSerializer.Serialize(result));
     }
 }

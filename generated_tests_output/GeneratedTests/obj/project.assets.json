@@ -932,11 +932,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/GeneratedTests/GeneratedTests.csproj",
+      "projectUniqueName": "/Users/bbalasub/Desktop/updated/csharp_test_generator_llm/generated_tests_output/GeneratedTests/GeneratedTests.csproj",
       "projectName": "GeneratedTests",
-      "projectPath": "/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/GeneratedTests/GeneratedTests.csproj",
+      "projectPath": "/Users/bbalasub/Desktop/updated/csharp_test_generator_llm/generated_tests_output/GeneratedTests/GeneratedTests.csproj",
       "packagesPath": "/Users/bbalasub/.nuget/packages/",
-      "outputPath": "/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/GeneratedTests/obj/",
+      "outputPath": "/Users/bbalasub/Desktop/updated/csharp_test_generator_llm/generated_tests_output/GeneratedTests/obj/",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "/Users/bbalasub/.nuget/NuGet/NuGet.Config"

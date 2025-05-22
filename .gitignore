@@ -1,1 +1,6 @@
 venv
+*.env
+.env
+testgen/.env
+/generated_tests_output/src
+generated_tests_output/src

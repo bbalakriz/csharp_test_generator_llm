@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/RoslynExtractor/CodeStructureExtractor/CodeStructureExtractor.csproj": {}
+    "/Users/bbalasub/Desktop/updated/csharp_test_generator_llm/generated_tests_output/RoslynExtractor/CodeStructureExtractor/CodeStructureExtractor.csproj": {}
   },
   "projects": {
-    "/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/RoslynExtractor/CodeStructureExtractor/CodeStructureExtractor.csproj": {
+    "/Users/bbalasub/Desktop/updated/csharp_test_generator_llm/generated_tests_output/RoslynExtractor/CodeStructureExtractor/CodeStructureExtractor.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/RoslynExtractor/CodeStructureExtractor/CodeStructureExtractor.csproj",
+        "projectUniqueName": "/Users/bbalasub/Desktop/updated/csharp_test_generator_llm/generated_tests_output/RoslynExtractor/CodeStructureExtractor/CodeStructureExtractor.csproj",
         "projectName": "CodeStructureExtractor",
-        "projectPath": "/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/RoslynExtractor/CodeStructureExtractor/CodeStructureExtractor.csproj",
+        "projectPath": "/Users/bbalasub/Desktop/updated/csharp_test_generator_llm/generated_tests_output/RoslynExtractor/CodeStructureExtractor/CodeStructureExtractor.csproj",
         "packagesPath": "/Users/bbalasub/.nuget/packages/",
-        "outputPath": "/Users/bbalasub/Mywork/RedHatAIWorkspace/csharp_test_generator_llm/fine/generated_tests_output/RoslynExtractor/CodeStructureExtractor/obj/",
+        "outputPath": "/Users/bbalasub/Desktop/updated/csharp_test_generator_llm/generated_tests_output/RoslynExtractor/CodeStructureExtractor/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/Users/bbalasub/.nuget/NuGet/NuGet.Config"
